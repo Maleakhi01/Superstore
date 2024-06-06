@@ -15,9 +15,8 @@ st.sidebar.image("superstore_logo.png", width=300)
 
 st.sidebar.markdown('<div style="margin-top: 50px;"></div>', unsafe_allow_html=True)
 
-
-shipping, sales, product, customer, date = st.tabs(
-    ["Shipping", "Sales", "Product", "Customer", "Date"]
+shipping, sales, product, customer = st.tabs(
+    ["Shipping", "Sales", "Product", "Customer"]
 )
 
 df["Order Date"] = pd.to_datetime(df["Order Date"], format="%m/%d/%Y")
@@ -30,9 +29,46 @@ year_filter = st.sidebar.selectbox(
 )
 
 if year_filter == "All":
-    filtered_data = df
+    filtered_year = df
 else:
-    filtered_data = df[df["Year"] == year_filter]
+    filtered_year = df[df["Year"] == year_filter]
+
+filtered_year["Month"] = filtered_year["Order Date"].dt.month
+
+month_filter = st.sidebar.selectbox(
+    "Filter by Month", ["All"] + sorted(filtered_year["Month"].unique())
+)
+
+if month_filter == "All":
+    filtered_data = filtered_year
+else:
+    filtered_data = filtered_year[filtered_year["Month"] == month_filter]
+
+min_date = filtered_data["Order Date"].min()
+max_date = filtered_data["Order Date"].max()
+latest_date = max_date
+
+if year_filter == "All" and month_filter == "All":
+    date_range = st.sidebar.date_input(
+        "Filter by Date Range",
+        [latest_date, latest_date],
+        min_value=min_date,
+        max_value=max_date,
+    )
+else:
+    date_range = st.sidebar.date_input(
+        "Filter by Date Range",
+        [min_date, latest_date],
+        min_value=min_date,
+        max_value=max_date,
+    )
+
+if len(date_range) == 2:
+    start_date, end_date = date_range
+    filtered_data = filtered_data[
+        (filtered_data["Order Date"] >= pd.to_datetime(start_date))
+        & (filtered_data["Order Date"] <= pd.to_datetime(end_date))
+    ]
 
 list_of_regions = ["All"] + list(filtered_data["Region"].unique())
 
@@ -58,11 +94,10 @@ if selected_city == "All":
 else:
     filtered_df = filtered_state[filtered_state["City"] == selected_city]
 
-st.sidebar.markdown('<div style="margin-top: 250px;"></div>', unsafe_allow_html=True)
+st.sidebar.markdown('<div style="margin-top: 200px;"></div>', unsafe_allow_html=True)
 st.sidebar.markdown(
     "<h3 style='text-align: center;'>Maleakhi Ezekiel</h3>", unsafe_allow_html=True
 )
-
 
 with shipping:
     num_transactions = filtered_df.shape[0]
@@ -91,9 +126,8 @@ with shipping:
     st.markdown("")
     st.markdown("")
 
-    st.subheader(f"Transactions by Year")
+    st.subheader("Transactions by Year")
     transactions_by_year = filtered_df["Year"].value_counts().sort_index()
-
     transactions_by_year.index = transactions_by_year.index.astype(int)
 
     fig = px.line(
@@ -102,6 +136,8 @@ with shipping:
         markers=True,
         labels={"x": "Year", "y": "Number of Transactions"},
     )
+
+    fig.update_xaxes(tickmode="linear")
 
     st.plotly_chart(fig)
 
@@ -112,7 +148,6 @@ with shipping:
 
     delivery1, delivery2 = st.columns([0.3, 0.7])
     with delivery1:
-
         filtered_df["Order Date"] = pd.to_datetime(
             filtered_df["Order Date"], format="%m/%d/%Y"
         )
@@ -122,11 +157,23 @@ with shipping:
         filtered_df["Shipping Duration"] = (
             filtered_df["Ship Date"] - filtered_df["Order Date"]
         ).dt.days
-        average_shipping_delay = filtered_df.groupby("Ship Mode")[
-            "Shipping Duration"
-        ].mean()
-        st.subheader(f"Average Shipping Estimation")
-        st.dataframe(round(average_shipping_delay))
+        average_shipping_delay = (
+            filtered_df.groupby("Ship Mode")["Shipping Duration"].mean().reset_index()
+        )
+        average_shipping_delay.rename(
+            columns={"Shipping Duration": "Average Shipping Duration (Days)"},
+            inplace=True,
+        )
+        st.subheader("Average Shipping Estimation")
+        st.markdown("")
+        st.markdown("")
+        st.markdown("")
+        st.markdown("")
+        st.markdown("")
+        st.markdown("")
+        st.markdown("")
+        st.markdown("")
+        st.table(round(average_shipping_delay, 2))
 
     with delivery2:
         average_estimated_duration = {
@@ -150,31 +197,38 @@ with shipping:
         )
         shipment_counts["Late Delivery"] = shipment_counts["sum"]
         shipment_counts = shipment_counts.reset_index()
-        df_melted = pd.melt(
-            shipment_counts,
-            id_vars=["Ship Mode"],
-            value_vars=["Late Delivery", "On Time Delivery"],
-        )
-        df_melted.columns = ["Ship Mode", "Status Delivery", "Count"]
-        base_chart = (
-            alt.Chart(df_melted)
-            .mark_bar()
-            .encode(x="Ship Mode:N", y="Count:Q", color="Status Delivery:N")
-            .properties(
-                width=800,
+
+        fig = go.Figure()
+
+        fig.add_trace(
+            go.Bar(
+                x=shipment_counts["Ship Mode"],
+                y=shipment_counts["Late Delivery"],
+                name="Late Delivery",
+                text=shipment_counts["Late Delivery"],
+                textposition="inside",
+                marker_color="indianred",
             )
         )
 
-        text_labels = base_chart.mark_text(
-            align="center",
-            baseline="middle",
-            dx=0,
-            dy=-5,
-        ).encode(text="Count:Q")
+        fig.add_trace(
+            go.Bar(
+                x=shipment_counts["Ship Mode"],
+                y=shipment_counts["On Time Delivery"],
+                name="On Time Delivery",
+                text=shipment_counts["On Time Delivery"],
+                textposition="inside",
+                marker_color="lightskyblue",
+            )
+        )
+        fig.update_layout(
+            xaxis_title="Shipping Mode",
+            yaxis_title="Number of Deliveries",
+            barmode="stack",
+        )
 
-        chart = base_chart + text_labels
-
-        st.altair_chart(chart, use_container_width=True)
+        st.subheader(f"Delivery On Time vs Late")
+        st.plotly_chart(fig)
 
     state_counts = filtered_df["State"].value_counts().reset_index()
     state_counts.columns = ["State", "Count"]
@@ -452,47 +506,45 @@ with sales:
     st.plotly_chart(fig, use_container_width=True)
 
     loss_products = filtered_df[filtered_df["Profit"] < 0]
-    loss_products_sorted = loss_products.sort_values(by="Profit", ascending=True)
-    top_loss_products = loss_products_sorted.head(10)
-
-    columns_to_display_loss = [
-        "Product Name",
-        "Sales",
-        "Quantity",
-        "Discount",
-        "Profit",
-    ]
-    st.subheader("Top 10 Transactions with Highest Loss:")
-    st.table(top_loss_products[columns_to_display_loss])
+    top_loss_products = (
+        loss_products.groupby("Product Name")
+        .agg({"Sales": "sum", "Quantity": "sum", "Discount": "mean", "Profit": "sum"})
+        .reset_index()
+        .sort_values(by="Profit", ascending=True)
+        .head(10)
+        .reset_index(drop=True)
+    )
 
     profitable_products = filtered_df[filtered_df["Profit"] > 0]
-    profitable_products_sorted = profitable_products.sort_values(
-        by="Profit", ascending=False
+    top_profitable_products = (
+        profitable_products.groupby("Product Name")
+        .agg({"Sales": "sum", "Quantity": "sum", "Discount": "mean", "Profit": "sum"})
+        .reset_index()
+        .sort_values(by="Profit", ascending=False)
+        .head(10)
+        .reset_index(drop=True)
     )
-    top_profitable_products = profitable_products_sorted.head(10)
-    columns_to_display_profit = [
-        "Product Name",
-        "Sales",
-        "Quantity",
-        "Discount",
-        "Profit",
-    ]
+
+    top_10_product_highest_discount = (
+        filtered_df.groupby("Product Name")
+        .agg({"Sales": "sum", "Quantity": "sum", "Discount": "mean", "Profit": "sum"})
+        .reset_index()
+        .sort_values(by="Discount", ascending=False)
+        .head(10)
+        .reset_index(drop=True)
+    )
+    top_loss_products.index += 1
+    top_profitable_products.index += 1
+    top_10_product_highest_discount.index += 1
+
+    st.subheader("Top 10 Products with Highest Loss:")
+    st.table(top_loss_products)
 
     st.subheader("Top 10 Products with Highest Profit:")
-    st.table(top_profitable_products[columns_to_display_profit])
+    st.table(top_profitable_products)
 
-    data_sorted_by_discount = filtered_df.sort_values(by="Discount", ascending=False)
-    top_10_product_highest_discount = data_sorted_by_discount.head(10)
-
-    columns_to_display_discount = [
-        "Product Name",
-        "Sales",
-        "Quantity",
-        "Discount",
-        "Profit",
-    ]
-    st.subheader("Top 10 Product with Highest Discount:")
-    st.table(top_10_product_highest_discount[columns_to_display_discount])
+    st.subheader("Top 10 Products with Highest Discount:")
+    st.table(top_10_product_highest_discount)
 
 
 with product:
@@ -564,16 +616,23 @@ with product:
         st.plotly_chart(fig_subcategories_region)
 
     product = st.columns(1)
-    top_10_products_by_quantity = product_quantities.sort_values(
-        by="Quantity", ascending=False
-    ).head(10)
+    top_10_products_by_quantity = (
+        product_quantities.sort_values(by="Quantity", ascending=False)
+        .head(10)
+        .reset_index(drop=True)
+    )
+    top_10_products_by_quantity.index += 1
+    top_10_product_highest_discount.index += 1
+
     columns_to_display_product = ["Product Name", "Quantity"]
     st.write("## Top 10 Products by Quantity Sold")
     st.table(top_10_products_by_quantity[columns_to_display_product])
 
-    bottom_10_products_by_quantity = product_quantities.sort_values(
-        by="Quantity", ascending=True
-    ).head(10)
+    bottom_10_products_by_quantity = (
+        product_quantities.sort_values(by="Quantity", ascending=True)
+        .head(10)
+        .reset_index(drop=True)
+    )
     st.write("## Bottom 10 Products by Quantity Sold")
     st.table(bottom_10_products_by_quantity[columns_to_display_product])
 
@@ -636,42 +695,30 @@ with customer:
     st.plotly_chart(fig, use_container_width=True)
 
     top_customers_quantity = (
-        filtered_df.groupby("Customer Name")
-        .agg({"Quantity": "sum"})
+        filtered_df.groupby(["Customer Name"])
+        .agg({"Quantity": "sum", "Product Name": lambda x: ", ".join(x)})
         .nlargest(10, "Quantity")
         .reset_index()
     )
 
     top_customers_profit = (
-        filtered_df.groupby("Customer Name")
-        .agg({"Profit": "sum"})
+        filtered_df.groupby(["Customer Name"])
+        .agg({"Profit": "sum", "Product Name": lambda x: ", ".join(x)})
         .nlargest(10, "Profit")
         .reset_index()
     )
 
+    top_customers_quantity.index += 1
+    top_customers_profit.index += 1
+
+    top_customers_quantity = top_customers_quantity[
+        ["Customer Name", "Product Name", "Quantity"]
+    ]
+    top_customers_profit = top_customers_profit[
+        ["Customer Name", "Product Name", "Profit"]
+    ]
     st.subheader("Top 10 Customers with Highest Quantity Sold")
     st.table(top_customers_quantity)
 
     st.subheader("Top 10 Customers with Highest Profit")
     st.table(top_customers_profit)
-
-with date:
-    st.title("Order Date Filtering for Specific Order Data")
-
-    # Create date input widgets
-    start_date = st.date_input("Start date", format="MM/DD/YYYY")
-    end_date = st.date_input("End date", format="MM/DD/YYYY")
-
-    # Convert start_date and end_date to datetime objects
-    start_date = pd.to_datetime(start_date)
-    end_date = pd.to_datetime(end_date)
-
-    # Filter the DataFrame based on the selected date range
-    if start_date and end_date:
-        # Assuming 'Order Date' is the correct column name
-        filtered_df = df[(df['Order Date'] >= start_date) & (df['Order Date'] <= end_date)]
-    else:
-        filtered_df = df
-
-    # Display the filtered DataFrame
-    st.write(filtered_df)
