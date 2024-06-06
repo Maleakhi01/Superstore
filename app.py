@@ -683,13 +683,13 @@ with customer:
             name="Unique Customers",
         )
     )
-
     fig.update_layout(
         xaxis_title="Year",
         yaxis_title="Number of Customers",
         width=1200,
         height=600,
         legend=dict(x=0, y=1, traceorder="normal"),
+        xaxis=dict(tickmode="linear")
     )
     st.subheader("Number of Customers Reached Each Year")
     st.plotly_chart(fig, use_container_width=True)
