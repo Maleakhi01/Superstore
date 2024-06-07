@@ -14,11 +14,9 @@ st.set_page_config(layout="wide", initial_sidebar_state="expanded")
 def load_data(file_path):
     return pd.read_csv(file_path, encoding="ISO-8859-1")
 
-# Load the data
 file_path = "Superstore.csv"
 df = load_data(file_path)
 
-# Apply custom CSS
 def apply_custom_css():
     with open("style.css") as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
