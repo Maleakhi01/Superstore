@@ -12,8 +12,6 @@ def metric_calculations(filtered_df):
     ).head(1)
     top_product_name = top_product_by_quantity.iloc[0]["Product Name"]
     top_product_quantity = top_product_by_quantity.iloc[0]["Quantity"]
-
-    # product_counts = filtered_df["Product Name"].nunique()
     top_category = filtered_df["Category"].value_counts().idxmax()
     total_products_sold = filtered_df["Product Name"].value_counts()
     total_products_sold_len = len(total_products_sold)
