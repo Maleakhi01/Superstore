@@ -62,8 +62,7 @@ def plot_sales_profit(df):
         .agg({"Sales": "sum", "Profit": "sum"})
         .reset_index()
     )
-
-    # Convert Year-Month to a string for Plotly
+    
     sales_profit_by_month["Month"] = sales_profit_by_month["Month"].astype(str)
     fig_month = go.Figure()
     fig_month.add_trace(
