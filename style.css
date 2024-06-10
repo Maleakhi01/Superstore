@@ -1,9 +1,9 @@
 div.st-emotion-cache-1r6slb0.e1f1d6gn3{
     background-color: rgb(255, 255, 255);
     border-radius: 10px;
-    padding: 20px 20px 20px 70px;
-    padding: 5% 5% 5% 10%;
+    padding: 10px 10px 10px 10px;
     border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.8), 0 1px 3px rgba(0, 0, 0, 0.08);
+    border: 1px solid black;
 }
 
