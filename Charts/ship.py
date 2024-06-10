@@ -45,14 +45,12 @@ def generate_transactions_plot(df,filtered_year):
         12: "Dec"
     }
 
-    # Convert month numbers to month names
     transactions_by_month["Month"] = transactions_by_month["Month"].map(month_names)
 
-    # Create the line plot
     fig_month = px.line(
         transactions_by_month,
         x="Month",
-        y="Number of Transactions",  # Change this to your actual numerical column name
+        y="Number of Transactions",
         markers=True,
         labels={"Month": "Month", "Number of Transactions": "Number of Transactions"}
     )
