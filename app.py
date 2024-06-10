@@ -3,10 +3,10 @@ import pandas as pd
 import altair as alt
 import plotly.express as px
 import plotly.graph_objects as go
-from sales import display_metrics_and_plots
-from ship import display_all_shippings
-from product import display_all_product
-from customer import display_customer
+from charts.sales import display_metrics_and_plots
+from charts.ship import display_all_shippings
+from charts.product import display_all_product
+from charts.customer import display_customer
 
 st.set_page_config(layout="wide", initial_sidebar_state="expanded")
 
@@ -31,70 +31,85 @@ shipping, sales, product, customer = st.tabs(
     ["Shipping", "Sales", "Product", "Customer"]
 )
 
-
 df["Order Date"] = pd.to_datetime(df["Order Date"], format="%m/%d/%Y")
 df["Ship Date"] = pd.to_datetime(df["Ship Date"], format="%m/%d/%Y")
-
 df["Year"] = df["Order Date"].dt.year
 df["Month"] = df["Order Date"].dt.month
 
 latest_year = df["Year"].max()
 latest_month = df[df["Year"] == latest_year]["Month"].max()
-latest_date = df["Order Date"].max().date()
+latest_date = df["Order Date"].max()
+first_date_latest_month = pd.Timestamp(latest_year, latest_month, 1)
+last_date_latest_month = first_date_latest_month + pd.offsets.MonthEnd(1)
 
-default_year = latest_year if latest_year else None
-default_month = latest_month if latest_month else None
-default_date_range = [latest_date - pd.Timedelta(days=30), latest_date]
+month_names = {
+    1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr",
+    5: "May", 6: "Jun", 7: "Jul", 8: "Aug",
+    9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec"
+}
+# Reverse dictionary to map month names back to numbers
+month_numbers = {v: k for k, v in month_names.items()}
+
 
 year_filter = st.sidebar.selectbox(
     "Filter by Year",
     ["All"] + sorted(df["Year"].unique()),
-    index=sorted(df["Year"].unique()).index(default_year) + 1 if default_year else 0
+    index=sorted(df["Year"].unique()).index(latest_year) + 1 if latest_year else 0
 )
 
 if year_filter == "All":
     filtered_year = df
-    month_filter_options = ["All"] + sorted(filtered_year["Month"].unique())
+    available_months = sorted(filtered_year["Month"].unique())
+    month_filter_options = ["All"] + [month_names[m] for m in available_months]
+    if latest_month in available_months:
+        month_filter_index = available_months.index(latest_month) + 1
+    else:
+        month_filter_index = 0
     month_filter = st.sidebar.selectbox(
         "Filter by Month",
         month_filter_options,
+        index=month_filter_index
     )
+
 else:
     filtered_year = df[df["Year"] == year_filter]
-    filtered_year["Month"] = filtered_year["Order Date"].dt.month
-
+    available_months = sorted(filtered_year["Month"].unique())
+    month_filter_options = ["All"] + [month_names[m] for m in available_months]
+    if latest_month in available_months:
+        month_filter_index = available_months.index(latest_month) + 1
+    else:
+        month_filter_index = 0
+    
     month_filter = st.sidebar.selectbox(
         "Filter by Month",
-        ["All"] + sorted(df[df["Year"] == year_filter]["Month"].unique()),
-        index=sorted(df[df["Year"] == year_filter]["Month"].unique()).index(default_month) + 1 if default_month is not None else 0
+        month_filter_options,
+        index=month_filter_index
     )
 
-
-if month_filter == "All":
-    filtered_data = filtered_year
+if month_filter != "All":
+    selected_month_number = month_numbers[month_filter]
 else:
-    filtered_data = filtered_year[filtered_year["Month"] == month_filter]
+    selected_month_number = None
 
+if selected_month_number is not None:
+    filtered_data = filtered_year[filtered_year["Month"] == selected_month_number]
+else:
+    filtered_data = filtered_year
 
 min_date = filtered_data["Order Date"].min()
 max_date = filtered_data["Order Date"].max()
+first_date_latest_month = pd.Timestamp(latest_year, latest_month, 1)
 latest_date = max_date
+default_date_range = [first_date_latest_month, last_date_latest_month]
 
-if year_filter == default_year and month_filter == default_month:
+if year_filter == latest_year and month_filter == latest_month:
     date_range = st.sidebar.date_input(
         "Filter by Date Range",
-        [latest_date, latest_date],
-        min_value=min_date,
-        max_value=max_date,
+        default_date_range,
+        min_value=first_date_latest_month,
+        max_value=last_date_latest_month,
     )
     
-elif year_filter == "All" and month_filter == "All":
-    date_range = st.sidebar.date_input(
-        "Filter by Date Range",
-        [min_date, latest_date],
-        min_value=min_date,
-        max_value=max_date,
-    )
 else:
     date_range = st.sidebar.date_input(
         "Filter by Date Range",
@@ -109,6 +124,13 @@ if len(date_range) == 2:
         (filtered_data["Order Date"] >= pd.to_datetime(start_date))
         & (filtered_data["Order Date"] <= pd.to_datetime(end_date))
     ]
+else:
+    start_date = end_date = date_range[0]
+    filtered_data = filtered_data[
+        (filtered_data["Order Date"] >= pd.to_datetime(start_date))
+        & (filtered_data["Order Date"] <= pd.to_datetime(end_date))
+    ]
+
 
 list_of_regions = ["All"] + list(filtered_data["Region"].unique())
 
@@ -140,10 +162,10 @@ st.sidebar.markdown(
 )
 
 with shipping:
-    display_all_shippings(filtered_df,df)
+    display_all_shippings(filtered_df,df, filtered_year)
 with sales:
-    display_metrics_and_plots(filtered_df,df)
+    display_metrics_and_plots(filtered_df,df, filtered_year)
 with product:
     display_all_product(filtered_df)
 with customer:
-    display_customer(filtered_df,df)
+    display_customer(filtered_df,df, filtered_year)
