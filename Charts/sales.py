@@ -134,7 +134,6 @@ def plot_loss_discount(filtered_df,df, filtered_year):
         )
     fig.update_layout(width=800)
 
-    # Optionally, you can update x-axis ticks to show all years linearly
     fig.update_xaxes(tickmode="linear")
 
     negative_profit_data_month = filtered_year[filtered_year["Profit"] < 0]
